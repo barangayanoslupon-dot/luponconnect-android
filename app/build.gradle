@@ -3,10 +3,12 @@ plugins {
 }
 
 // Values come from GitHub Secrets during the build (see README).
-def sbUrl   = System.getenv("SUPABASE_URL") ?: ""
-def sbKey   = System.getenv("SUPABASE_ANON_KEY") ?: ""
-def ksPath  = System.getenv("KEYSTORE_PATH") ?: ""
-def ksPass  = System.getenv("KEYSTORE_PASSWORD") ?: ""
+// Secrets pasted with a hidden space or new line would break the build, so we clean them first.
+def clean   = { String s -> (s ?: "").replaceAll("[\\r\\n]", "").trim().replace("\\", "\\\\").replace("\"", "\\\"") }
+def sbUrl   = clean(System.getenv("SUPABASE_URL"))
+def sbKey   = clean(System.getenv("SUPABASE_ANON_KEY"))
+def ksPath  = (System.getenv("KEYSTORE_PATH") ?: "").trim()
+def ksPass  = (System.getenv("KEYSTORE_PASSWORD") ?: "").replaceAll("[\\r\\n]", "").trim()
 def runNum  = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
 def haveKeystore = ksPath && ksPass && new File(ksPath).exists()
 
