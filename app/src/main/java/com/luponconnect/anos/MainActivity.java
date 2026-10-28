@@ -19,6 +19,7 @@ import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,6 +28,8 @@ public class MainActivity extends AppCompatActivity {
 
     private WebView web;
     private ProgressBar bar;
+    private SwipeRefreshLayout swipe;
+    private long pausedAt = 0;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -42,6 +45,16 @@ public class MainActivity extends AppCompatActivity {
 
         web = findViewById(R.id.web);
         bar = findViewById(R.id.bar);
+        swipe = findViewById(R.id.swipe);
+
+        // Pull down to refresh (only when the page is at the very top)
+        swipe.setColorSchemeResources(R.color.gold, R.color.green);
+        swipe.setOnRefreshListener(() -> {
+            String u = web.getUrl();
+            if (u == null || u.startsWith("file:")) web.loadUrl(SITE);
+            else web.reload();
+        });
+        swipe.setOnChildScrollUpCallback((parent, child) -> web.getScrollY() > 0);
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -63,10 +76,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 bar.setVisibility(View.GONE);
+                swipe.setRefreshing(false);
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                swipe.setRefreshing(false);
                 if (request.isForMainFrame()) {
                     view.loadUrl("file:///android_asset/offline.html");
                 }
@@ -105,6 +120,24 @@ public class MainActivity extends AppCompatActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         web.loadUrl(targetUrl(intent));
+    }
+
+    // Coming back to the app after a few minutes: load the page again so new news/quiz show up
+    @Override
+    protected void onPause() {
+        super.onPause();
+        pausedAt = System.currentTimeMillis();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (web != null && pausedAt > 0 && System.currentTimeMillis() - pausedAt > 5 * 60 * 1000L) {
+            String u = web.getUrl();
+            if (u != null && u.startsWith("file:")) web.loadUrl(SITE);
+            else if (u != null) web.reload();
+        }
+        pausedAt = 0;
     }
 
     @Override
