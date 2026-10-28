@@ -1,0 +1,65 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Values come from GitHub Secrets during the build (see README).
+def sbUrl   = System.getenv("SUPABASE_URL") ?: ""
+def sbKey   = System.getenv("SUPABASE_ANON_KEY") ?: ""
+def ksPath  = System.getenv("KEYSTORE_PATH") ?: ""
+def ksPass  = System.getenv("KEYSTORE_PASSWORD") ?: ""
+def runNum  = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+def haveKeystore = ksPath && ksPass && new File(ksPath).exists()
+
+android {
+    namespace 'com.luponconnect.anos'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.luponconnect.anos"
+        minSdk 24
+        targetSdk 34
+        versionCode runNum
+        versionName "1.0." + runNum
+        buildConfigField "String", "SUPABASE_URL", "\"${sbUrl}\""
+        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${sbKey}\""
+    }
+
+    signingConfigs {
+        release {
+            if (haveKeystore) {
+                storeFile file(ksPath)
+                storeType "pkcs12"
+                storePassword ksPass
+                keyAlias "lupon"
+                keyPassword ksPass
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Without the keystore secrets the APK is signed with a debug key (still installable).
+            signingConfig haveKeystore ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.work:work-runtime:2.9.1'
+}
